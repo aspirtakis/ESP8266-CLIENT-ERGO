@@ -14,7 +14,7 @@ unsigned long lastTime = 0;
 // Timer set to 10 minutes (600000)
 //unsigned long timerDelay = 600000;
 // Set timer to 5 seconds (5000)
-unsigned long timerDelay = 5000;
+unsigned long timerDelay = 15000;
 
 void setup() {
   Serial.begin(115200);
@@ -40,9 +40,9 @@ void loop() {
       HTTPClient http;
       http.begin(serverName);
       http.addHeader("Content-Type", "application/json");
-      http.addHeader("X-DreamFactory-API-Key", "36fda24fe5588fa4285ac6c6c2fdfbdb6b6bc9834699774c9bf777f706d05a88");
-      http.addHeader("X-DreamFactory-Session-Token", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1ZmVkYzk5YjJmZmI4M2QyODY0MTI4OTVjMDI4YWM1YiIsImlzcyI6Imh0dHBzOi8vYmUuZXJnb3Byb3AuY29tL2FwaS92Mi9zeXN0ZW0vYWRtaW4vc2Vzc2lvbiIsImlhdCI6MTU5MTU2Njg3NywiZXhwIjoxNTkxNTcwNDc3LCJuYmYiOjE1OTE1NjY4NzcsImp0aSI6IlJNd1FXdmdXTkF1VWhsNFoiLCJ1c2VyX2lkIjoxLCJmb3JldmVyIjpmYWxzZX0.BBBKTHx8s51eqDejBQJTOUkQUwxX4fITjDB9BkETFBQ");
-      int httpResponseCode = http.POST("{\"resource\":[{\"id\":0},{\"temp\":22}],\"ids\":[0],\"filter\":\"string\",\"params\":[\"string\"]}");
+      http.addHeader("X-DreamFactory-API-Key", "9fa0af1c2aef033e9683b9570c27c4f281808584c04d752bd089f92c14640660");
+     
+      int httpResponseCode = http.POST("{\"resource\":[{\"id\":22},{\"Temperature\":22}],\"ids\":[0],\"filter\":\"string\",\"params\":[\"string\"]}");
       Serial.print("HTTP Response code: ");
       Serial.println(httpResponseCode);
       http.end();
