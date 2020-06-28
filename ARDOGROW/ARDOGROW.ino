@@ -48,7 +48,7 @@ void setup() {
          if(tempblm > 30 ){
         digitalWrite(INPUTAIR2, HIGH);
       }
-          if(tempblm < 28 ){
+          if(tempblm < 25 ){
         digitalWrite(INPUTAIR2, LOW);
       }
     }
@@ -58,7 +58,7 @@ void setup() {
         digitalWrite(INPUTAIR, HIGH);
 
       }
-          if(temp < 23 ){
+          if(temp < 25 ){
         digitalWrite(INPUTAIR, LOW);
       }
     }
@@ -163,7 +163,7 @@ void loop() {
   int val = digitalRead(11);
  
 //  if(val ){
-//      digitalWrite(WATERPUMP, HIGH);
+//      Serial.printin();
 //    
 //    }
 //    if(!val  ){
@@ -187,9 +187,10 @@ void loop() {
       SendSensorData(t11, h11 ,t1, h1);
     }
 
-        if(str == "getStatus"){
+    if(str == "getStatus"){
       SendStatus();
     }
+    
      if(str == "cPump"){
        digitalWrite(WATERPUMP, LOW);
     }
