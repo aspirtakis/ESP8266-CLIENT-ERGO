@@ -16,22 +16,20 @@ LiquidCrystal_I2C lcd = LiquidCrystal_I2C(0x3F, 20, 4); // Change to (0x27,16,2)
 DHT dht(DHTPINGROW, DHTTYPE);
 DHT dht1(DHTPINBLM, DHTTYPEBLM); 
 
-const int OUTFILTER = 3; 
-const int INPUTAIR = 4; 
-const int INPUTAIR2 = 5; 
-const int WATERPUMP = 6; 
+const int OUTFILTER = 3; //OUTFILTER
+const int INPUTAIR = 4; //GROW
+const int INPUTAIR2 = 5; //BLOOM
+const int WATERPUMP = 6; //PUMP
 
+String message = "";
+bool messageReady = false;
 
 uint32_t delayMS;
 
 void setup() {
-  Serial.begin(115200);
-  lcd.init();
-  lcd.backlight();
-  // Initialize device.
+  Serial.begin(9600);
   dht.begin();
   dht1.begin();
-  sensor_t sensor;
   pinMode(OUTFILTER, OUTPUT);
   pinMode(INPUTAIR, OUTPUT);
   pinMode(INPUTAIR2, OUTPUT);
@@ -40,28 +38,33 @@ void setup() {
   digitalWrite(INPUTAIR, LOW);
   digitalWrite(INPUTAIR2, LOW);
   digitalWrite(WATERPUMP, LOW);
-  delayMS = sensor.min_delay / 8000;
+  lcd.init();
+  lcd.backlight();
+ 
 }
 
 
-    void checkLogicblm(int tempblm , int humidityblm){
+void checkLogicblm(int tempblm , int humidityblm){
          if(tempblm > 30 ){
-        digitalWrite(INPUTAIR2, HIGH);
-      }
+          digitalWrite(INPUTAIR2, HIGH);
+          }
           if(tempblm < 25 ){
-        digitalWrite(INPUTAIR2, LOW);
-      }
-    }
+          digitalWrite(INPUTAIR2, LOW);
+          }
+         }
 
-        void checkLogicgrow(int temp , int humidity){
-         if(temp > 28 ){
-        digitalWrite(INPUTAIR, HIGH);
+         
 
+void checkLogicgrow(int temp , int humidity){
+  if(temp > 28 ){
+    digitalWrite(INPUTAIR, HIGH);
       }
-          if(temp < 25 ){
-        digitalWrite(INPUTAIR, LOW);
-      }
-    }
+  if(temp < 25 ){
+    digitalWrite(INPUTAIR, LOW);
+  }
+  }
+
+  
 
 String fixonoff (bool val) {
   if(val){
@@ -122,92 +125,75 @@ String fixonoff (bool val) {
       lcd.print(Pump); // Print the string "Hello World!"
      }
 
-    void SendSensorData(int temp , int humidity, int tempblm , int humidityblm)
-    {
-    
-    DynamicJsonBuffer jBuffer;
-    JsonObject& root= jBuffer.createObject();
-    root ["TempGrow"]=(temp);
-    root ["HumGrow"]=(humidity);
-    root ["TempBloom"]=(tempblm);
-    root ["HumBloom"]=(humidityblm);
-    root ["Meta"]=(humidityblm);
-    root.prettyPrintTo(Serial);
-    Serial.println();
-    }
-
-        void SendStatus()
-    {
-       String flt = fixonoff(digitalRead(3));
-              String air1 = fixonoff(digitalRead(4));
-                     String air2 = fixonoff(digitalRead(5));
-      String Pump = fixonoff(digitalRead(6));
-
-
-          DynamicJsonBuffer jBuffer;
-    JsonObject& root= jBuffer.createObject();
-    root ["FILTER"]=(flt);
-    root ["AIR1"]=(air1);
-    root ["AIR2"]=(air2);
-    root ["PUMP"]=(Pump);
-    root.prettyPrintTo(Serial);
-    Serial.println();
- 
-    }
-
-
     
 void loop() {
 
   delay(1000);
   int val = digitalRead(11);
- 
-//  if(val ){
-//      Serial.printin();
-//    
-//    }
-//    if(!val  ){
-//      digitalWrite(WATERPUMP, LOW);
-//    
-//    }
-  
   float h1 = dht1.readHumidity();
   float t1 = dht1.readTemperature();
   float h11 = dht.readHumidity();
   float t11 = dht.readTemperature();
   int sensorValue = analogRead(A0);
 
-    // SendSensorData(t11, h11 ,t1, h1);
- 
- while(Serial.available() > 0 ){
-    String str = Serial.readString();
-    str.trim();
-       
-    if(str == "getTemps"){
-      SendSensorData(t11, h11 ,t1, h1);
-    }
-
-    if(str == "getStatus"){
-      SendStatus();
-    }
-    
-     if(str == "cPump"){
-       digitalWrite(WATERPUMP, LOW);
-    }
-     if(str == "oPump"){
-    digitalWrite(WATERPUMP, HIGH);
-    }
-
-    Serial.flush();
+      while(Serial.available()) {
+    message = Serial.readString();
+    messageReady = true;
   }
- 
-  
 
+    if(messageReady) {
+    DynamicJsonDocument doc(256); // ArduinoJson version 6+
+    DeserializationError error = deserializeJson(doc,message);
+    if(error) {
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.c_str());
+      messageReady = false;
+      return;
+    }
+    if(doc["type"] == "getTemps") {
+      doc["type"] = "response";
+      // Get data from analog sensors
+      doc["growtemp"] = (t1);
+      doc["growhum"] = (h1);
+      doc["bloomtemp"] = (t11);
+      doc["bloomum"] = (h11);
+      serializeJson(doc,Serial);
+    }
+
+           String flt = fixonoff(digitalRead(3));
+              String air1 = fixonoff(digitalRead(4));
+                     String air2 = fixonoff(digitalRead(5));
+      String Pump = fixonoff(digitalRead(6));
+
+        if(doc["type"] == "getStatus") {
+      doc["type"] = "statusresponse";
+      // Get data from analog sensors
+      doc["Filter"] = (flt);
+      doc["GrowAir"] = (air1);
+      doc["BloomAir"] = (air2);
+      doc["Pump"] = (Pump);
+      serializeJson(doc,Serial);
+    }
+        if(doc["type"] == "oPump") {
+          digitalWrite(WATERPUMP, HIGH);
+          doc["type"] = "pumpresponse";
+          doc["pumpison"] = true;
+          serializeJson(doc,Serial);
+    }
+            if(doc["type"] == "cPump") {
+          digitalWrite(WATERPUMP, LOW);
+      doc["type"] = "pumpresponse";
+      doc["pumpison"] = false;
+      serializeJson(doc,Serial);
+    }
+    messageReady = false;
+  }
+  
+ 
   printerTemp(t11,t1);
   printerHum(h11,h1);
   checkLogicblm(t11,h11);
   checkLogicgrow(t1,h1);
-
 
 
 }
