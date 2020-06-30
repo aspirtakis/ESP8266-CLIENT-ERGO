@@ -20,9 +20,11 @@ const int OUTFILTER = 3; //OUTFILTER
 const int INPUTAIR = 4; //GROW
 const int INPUTAIR2 = 5; //BLOOM
 const int WATERPUMP = 6; //PUMP
+const int WATERPUMP2 = 8; //PUMP
 
 String message = "";
 bool messageReady = false;
+bool mannualmode =false;
 
 uint32_t delayMS;
 
@@ -38,6 +40,7 @@ void setup() {
   digitalWrite(INPUTAIR, LOW);
   digitalWrite(INPUTAIR2, LOW);
   digitalWrite(WATERPUMP, LOW);
+  digitalWrite(WATERPUMP2, LOW);
   lcd.init();
   lcd.backlight();
  
@@ -98,6 +101,7 @@ String fixonoff (bool val) {
               String air1 = fixonoff(digitalRead(4));
                      String air2 = fixonoff(digitalRead(5));
       String Pump = fixonoff(digitalRead(6));
+         String Pump2 = fixonoff(digitalRead(8));
  
       lcd.setCursor(0, 0); // Set the cursor on the first column and first row.
       lcd.print("Grow "); // Print the string "Hello World!"
@@ -122,27 +126,37 @@ String fixonoff (bool val) {
       lcd.setCursor(0, 3); // Set the cursor on the first column and first row.
       lcd.print("Pump="); // Print the string "Hello World!"
       lcd.setCursor(7, 3); // Set the cursor on the first column and first row.
-      lcd.print(Pump); // Print the string "Hello World!"
+      lcd.print(Pump2); // Print the string "Hello World!"
      }
 
     
 void loop() {
 
   delay(1000);
-  int val = digitalRead(11);
+ bool val = digitalRead(11);
   float h1 = dht1.readHumidity();
   float t1 = dht1.readTemperature();
   float h11 = dht.readHumidity();
   float t11 = dht.readTemperature();
-  int sensorValue = analogRead(A0);
 
-      while(Serial.available()) {
+  
+if(!val) {
+         digitalWrite(WATERPUMP2, HIGH);
+  }
+if(val) {
+           digitalWrite(WATERPUMP2, LOW);
+  }
+
+
+  
+
+        while(Serial.available()) {
     message = Serial.readString();
     messageReady = true;
   }
 
     if(messageReady) {
-    DynamicJsonDocument doc(256); // ArduinoJson version 6+
+    DynamicJsonDocument doc(512); // ArduinoJson version 6+
     DeserializationError error = deserializeJson(doc,message);
     if(error) {
       Serial.print(F("deserializeJson() failed: "));
@@ -151,21 +165,21 @@ void loop() {
       return;
     }
     if(doc["type"] == "getTemps") {
-      doc["type"] = "response";
+      doc["type"] = "rsp";
       // Get data from analog sensors
-      doc["growtemp"] = (t1);
-      doc["growhum"] = (h1);
-      doc["bloomtemp"] = (t11);
-      doc["bloomum"] = (h11);
+      doc["gtemp"] = (t1);
+      doc["ghum"] = (h1);
+      doc["btemp"] = (t11);
+      doc["bhum"] = (h11);
       serializeJson(doc,Serial);
     }
 
-           String flt = fixonoff(digitalRead(3));
-              String air1 = fixonoff(digitalRead(4));
-                     String air2 = fixonoff(digitalRead(5));
+      String flt = fixonoff(digitalRead(3));
+      String air1 = fixonoff(digitalRead(4));
+      String air2 = fixonoff(digitalRead(5));
       String Pump = fixonoff(digitalRead(6));
 
-        if(doc["type"] == "getStatus") {
+      if(doc["type"] == "getStatus") {
       doc["type"] = "statusresponse";
       // Get data from analog sensors
       doc["Filter"] = (flt);
@@ -189,7 +203,6 @@ void loop() {
     messageReady = false;
   }
   
- 
   printerTemp(t11,t1);
   printerHum(h11,h1);
   checkLogicblm(t11,h11);

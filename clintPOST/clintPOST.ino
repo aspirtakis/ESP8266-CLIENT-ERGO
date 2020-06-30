@@ -1,74 +1,75 @@
 #include <ArduinoJson.h>
-
+#include <SoftwareSerial.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
-
-     
+SoftwareSerial s(D6,D5);
+int data;
 const char* ssid = "OPTILOOPATTIC";
 const char* password = "!mijehof205!";
 
 //Your Domain name with URL path or IP address with path
 const char* serverName = "http://18.222.8.67:8888/api/v2/mongodb/_table/Sensors";
-
 // the following variables are unsigned longs because the time, measured in
 // milliseconds, will quickly become a bigger number than can be stored in an int.
 unsigned long lastTime = 0;
-
 unsigned long timerDelay = 15000;
-
-
 const char* tempgrow;
 
-
-
 void setup() {
-  Serial.begin(115200);
-
+  Serial.begin(9600);
+    s.begin(9600);
   WiFi.begin(ssid, password);
   Serial.println("Connecting");
   while(WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
+  s.begin(9600);
   Serial.println("");
   Serial.print("Connected to WiFi network with IP Address: ");
   Serial.println(WiFi.localIP());
- 
   Serial.println("Timer set to 5 seconds (timerDelay variable), it will take 5 seconds before publishing the first reading.");
-  
 
 }
 
-void loop() {
-
-
-
-
-
-
- //Send an HTTP POST request every 10 minutes
-  if ((millis() - lastTime) > timerDelay) {
-
-if(Serial.available()){
+void sendData() {
   
-
-    
-DynamicJsonBuffer jb;
-JsonObject& root = jb.parseObject(Serial);
-
-      const char* MetaData = root["Meta"];
-      const char* TempG = root["TempGrow"];
-      const char* TempB = root["TempBloom"];
-      const char* HumG = root["HumGrow"];
-      const char* HumB = root["HumBloom"];
+  
+   DynamicJsonDocument doc2(512);
+   DynamicJsonDocument doc(512);
+     doc["type"] = "getTemps";
+     serializeJson(doc,s);
+        bool messageReady = false;
+        String message;
       
-String request = (String)"{\"resource\":[{\"id\":50,\"MetaData\":"+MetaData+(String)",\"TempGrow\":"+TempG+(String)",\"TempBloom\":"+TempB+(String)",\"HumidityG\":"+HumG+(String)",\"HumidityB\":"+HumB+(String)"}],\"ids\":[0],\"filter\":\"string\",\"params\":[\"string\"]}";
- 
-  Serial.print(request);
+           
+           
+   while(messageReady == false) { // blocking but that's ok
+    if(s.available()) {
+      message = s.readString();
+      messageReady = true;
 
+    }
+  }
 
-    //Check WiFi connection status
+       DeserializationError error = deserializeJson(doc,message);
+      if(error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.c_str());
+    return;
+  }
+
+      auto Type = doc["type"].as<char*>();
+      auto MetaData = doc["gtemp"].as<int>();;
+      auto TempG = doc["gtemp"].as<int>();;
+      auto TempB = doc["btemp"].as<int>();;
+      auto HumG = doc["ghum"].as<int>();;
+      auto HumB = doc["bhum"].as<int>();;
+      
+   String request = (String)"{\"resource\":[{\"id\":50,\"MetaData\":"+MetaData+(String)",\"TempGrow\":"+TempG+(String)",\"TempBloom\":"+TempB+(String)",\"HumidityG\":"+HumG+(String)",\"HumidityB\":"+HumB+(String)"}],\"ids\":[0],\"filter\":\"string\",\"params\":[\"string\"]}";
+
+   //  Check WiFi connection status
     if(WiFi.status()== WL_CONNECTED){
       HTTPClient http;
       http.begin(serverName);
@@ -83,7 +84,16 @@ String request = (String)"{\"resource\":[{\"id\":50,\"MetaData\":"+MetaData+(Str
       Serial.println("WiFi Disconnected");
     }
     lastTime = millis();
+    delay(60000);
   }
+
+void loop() {
+  sendData();
+
+
   }
-       
-}
+    
+
+
+
+ 
